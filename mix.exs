@@ -22,6 +22,7 @@ defmodule GrpcKube.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:poolboy, "~> 1.5"},
       {:grpc, "~> 0.3.0-alpha.2"},
       {:kazan, "~> 0.10.0"},
       {:distillery, "~> 2.0"}

@@ -2,10 +2,14 @@ defmodule GrpcKube.Watcher do
   @moduledoc false
 
   use GenServer
+  alias Kazan.Apis.Core.V1.Event, as: V1Event
+  alias Kazan.Models.Apimachinery.Meta.V1.ObjectMeta
   alias Kazan.Watcher
   alias Kazan.Watcher.Event
   import Kazan.Apis.Core.V1, only: [list_event_for_all_namespaces!: 0]
   require Logger
+
+  @connections Application.get_env(:grpc_kube, :connections)
 
   def start_link(_) do
     GenServer.start_link(__MODULE__, [])
@@ -17,18 +21,37 @@ defmodule GrpcKube.Watcher do
   end
 
   def handle_info(%Event{object: object}, state) do
-    Logger.info(
-      inspect(%{object: object.involved_object, message: object.message, namespace: object.metadata.namespace})
-    )
-
     case object do
-      %Kazan.Apis.Core.V1.Event{message: "Deleted pod: " <> pod_name} ->
-        Logger.info("deleted pod #{pod_name}")
+      %V1Event{message: "Deleted pod: " <> _} = event ->
+        drop_connection(event)
+
+      %V1Event{message: "Started container"} = event ->
+        create_connection(event)
 
       _ ->
         :ok
     end
 
     {:noreply, state}
+  end
+
+  defp create_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace, labels: labels} = metadata}) do
+    Enum.map(@connections, fn %{namespace: child_namespace, label: child_label} ->
+      label = Map.get(labels, "app")
+
+      if namespace == child_namespace and label == child_label do
+        Logger.info("New connection should be created for pod #{metadata.name}")
+      end
+    end)
+  end
+
+  defp drop_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace, labels: labels} = metadata}) do
+    Enum.map(@connections, fn %{namespace: child_namespace, label: child_label} ->
+      label = Map.get(labels, "app")
+
+      if namespace == child_namespace and label == child_label do
+        Logger.info("New connection should be deleted for pod #{metadata.name}")
+      end
+    end)
   end
 end

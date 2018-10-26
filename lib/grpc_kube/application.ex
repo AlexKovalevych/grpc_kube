@@ -8,7 +8,8 @@ defmodule GrpcKube.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      # Starts a worker by calling: GrpcKube.Worker.start_link(arg)
+      # {DynamicSupervisor, strategy: :one_for_one, name: GrpcKube.DynamicSupervisor},
+      {GrpcKube.Channels, []},
       {GrpcKube.Watcher, []},
       %{
         id: GRPC.Server.Supervisor,

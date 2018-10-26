@@ -34,3 +34,5 @@ config :kazan, :server, :in_cluster
 config :logger, level: :info
 
 config :grpc, start_server: true
+
+config :grpc_kube, connections: [%{namespace: "default", label: "api"}]
