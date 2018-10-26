@@ -24,12 +24,11 @@ defmodule GrpcKube.Watcher do
     case object do
       %Kazan.Apis.Core.V1.Event{message: "Deleted pod: " <> pod_name} ->
         Logger.info("deleted pod #{pod_name}")
+
+      _ ->
+        :ok
     end
 
-    {:noreply, state}
-  end
-
-  def handle_info(%Event{} = event, state) do
     {:noreply, state}
   end
 end
