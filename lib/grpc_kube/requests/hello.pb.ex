@@ -14,10 +14,10 @@ defmodule GrpcKube.HelloResponse do
 
   use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{name: String.t()}
-  defstruct [:name]
+  @type t :: %__MODULE__{message: String.t()}
+  defstruct [:message]
 
-  field(:name, 1, type: :string)
+  field(:message, 1, type: :string)
 end
 
 defmodule GrpcKube.HelloService.Service do
