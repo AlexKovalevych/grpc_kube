@@ -2,6 +2,7 @@ defmodule GrpcKube.Watcher do
   @moduledoc false
 
   use GenServer
+  alias GrpcKube.Channels
   alias Kazan.Apis.Core.V1.Event, as: V1Event
   alias Kazan.Models.Apimachinery.Meta.V1.ObjectMeta
   alias Kazan.Watcher
@@ -35,19 +36,16 @@ defmodule GrpcKube.Watcher do
     {:noreply, state}
   end
 
-  defp create_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace, labels: labels} = metadata}) do
-    Enum.map(@connections, fn %{namespace: child_namespace, label: child_label} ->
-      label = Map.get(labels, "app")
+  defp create_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace}}) do
+    [%{label: label}] =
+      Enum.filter(@connections, fn %{namespace: connection_namespace} -> connection_namespace == namespace end)
 
-      if namespace == child_namespace and label == child_label do
-        Logger.info("New connection should be created for pod #{metadata.name}")
-      end
-    end)
+    Channels.sync_namespaced_connections(namespace, label)
   end
 
   defp drop_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace, labels: labels} = metadata}) do
     Enum.map(@connections, fn %{namespace: child_namespace, label: child_label} ->
-      label = Map.get(labels, "app")
+      label = Map.get(labels || %{}, "app")
 
       if namespace == child_namespace and label == child_label do
         Logger.info("New connection should be deleted for pod #{metadata.name}")
