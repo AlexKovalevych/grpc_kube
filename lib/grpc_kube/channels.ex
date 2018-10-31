@@ -20,7 +20,7 @@ defmodule GrpcKube.Channels do
 
       Enum.each(pod_list.items, fn pod ->
         if Map.get(pod.metadata.labels, "app") == label do
-          create_connection(namespace, pod.metadata.name)
+          create_connection(namespace, pod.metadata.name, pod.status.pod_ip)
         end
       end)
     end)
@@ -28,9 +28,9 @@ defmodule GrpcKube.Channels do
     {:ok, arg}
   end
 
-  def create_connection(namespace, pod_name) do
-    Logger.info("Creating connection for namespace: #{namespace} and pod: #{pod_name}")
-    {:ok, channel} = GRPC.Stub.connect("#{pod_name}:50051")
+  def create_connection(namespace, pod_name, pod_ip) do
+    Logger.info("Creating connection for namespace: #{namespace} and pod: #{pod_name}, ip: #{pod_ip}")
+    {:ok, channel} = GRPC.Stub.connect("#{String.replace(pod_ip, ".", "-")}.#{namespace}.pod.cluster.local:50051")
     channels = :ets.lookup(:channels, namespace)
     :ets.update_element(:channels, namespace, [channel | channels])
     {:ok, channel}
