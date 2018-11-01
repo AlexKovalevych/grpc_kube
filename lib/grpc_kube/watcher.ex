@@ -34,21 +34,13 @@ defmodule GrpcKube.Watcher do
     {:noreply, state}
   end
 
-  def handle_info({:gun_down, _, :http2, :closed, [], []}, state) do
-    Enum.map(get_connections(), fn %{namespace: namespace, label: label} ->
-      Channels.sync_namespaced_connections(namespace, label)
-    end)
-
-    {:noreply, state}
-  end
-
   defp create_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace}}) do
     connections =
       Enum.filter(get_connections(), fn %{namespace: connection_namespace} -> connection_namespace == namespace end)
 
     case connections do
       [%{label: label}] ->
-        Channels.sync_namespaced_connections(namespace, label)
+        GenServer.call(Channels, {:sync_connections, namespace, label})
 
       _ ->
         :ok

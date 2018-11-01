@@ -13,9 +13,8 @@ defmodule GrpcKube.Channels do
   @impl true
   def init(arg) do
     :ets.new(:channels, [:set, :named_table, :protected])
-    connections = Application.get_env(:grpc_kube, :connections)
 
-    Enum.map(connections, fn %{namespace: namespace, label: label} ->
+    Enum.map(get_connections(), fn %{namespace: namespace, label: label} ->
       :ets.insert(:channels, {namespace, []})
       sync_namespaced_connections(namespace, label)
     end)
@@ -23,7 +22,22 @@ defmodule GrpcKube.Channels do
     {:ok, arg}
   end
 
-  def sync_namespaced_connections(namespace, label) do
+  @impl true
+  def handle_call({:sync_connections, namespace, label}, _, state) do
+    sync_namespaced_connections(namespace, label)
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_info({:gun_down, _, :http2, :closed, [], []}, state) do
+    Enum.map(get_connections(), fn %{namespace: namespace, label: label} ->
+      sync_namespaced_connections(namespace, label)
+    end)
+
+    {:noreply, state}
+  end
+
+  defp sync_namespaced_connections(namespace, label) do
     pod_list = list_namespaced_pod!(namespace) |> Kazan.run!()
 
     # Create new connections
@@ -41,12 +55,14 @@ defmodule GrpcKube.Channels do
     end)
   end
 
+  def create_connection(_, _, nil), do: :ok
+
   def create_connection(namespace, pod_name, pod_ip) do
     [{_, channels}] = :ets.lookup(:channels, namespace)
 
     existing_channels =
       Enum.filter(channels, fn %Channel{host: host} ->
-        host == create_host(pod_ip, namespace)
+        "#{host}:50051" == create_host(pod_ip, namespace)
       end)
 
     if existing_channels == [] do
@@ -70,5 +86,9 @@ defmodule GrpcKube.Channels do
 
   defp create_host(ip, namespace) do
     "#{String.replace(ip, ".", "-")}.#{namespace}.pod.cluster.local:50051"
+  end
+
+  defp get_connections do
+    Application.get_env(:grpc_kube, :connections)
   end
 end
