@@ -39,8 +39,8 @@ defmodule GrpcKube.Watcher do
       Enum.filter(get_connections(), fn %{namespace: connection_namespace} -> connection_namespace == namespace end)
 
     case connections do
-      [%{label: label}] ->
-        GenServer.call(Channels, {:sync_connections, namespace, label})
+      [%{endpoint_name: endpoint_name}] ->
+        GenServer.call(Channels, {:sync_connections, namespace, endpoint_name})
 
       _ ->
         :ok
