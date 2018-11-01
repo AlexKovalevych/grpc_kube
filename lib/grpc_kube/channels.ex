@@ -54,13 +54,16 @@ defmodule GrpcKube.Channels do
     existing_channels = Enum.map(channels, &(Map.get(&1, :host) <> ":50051"))
     kube_channels = Enum.map(addresses, fn %EndpointAddress{ip: ip} -> create_host(ip, namespace) end)
 
-    Enum.each(kube_channels, fn kube_channel ->
-      if kube_channel not in existing_channels do
-        Logger.info("Creating connection for namespace: #{namespace} and host: #{kube_channel}")
-        {:ok, channel} = GRPC.Stub.connect(kube_channel)
-        :ets.insert(:channels, {namespace, [channel | channels]})
-      end
-    end)
+    new_channels =
+      Enum.reduce(kube_channels, channels, fn kube_channel, acc ->
+        if kube_channel not in existing_channels do
+          Logger.info("Creating connection for namespace: #{namespace} and host: #{kube_channel}")
+          {:ok, channel} = GRPC.Stub.connect(kube_channel)
+          [channel | acc]
+        end
+      end)
+
+    :ets.insert(:channels, {namespace, new_channels})
   end
 
   def create_connections(_, _), do: :ok
