@@ -21,11 +21,11 @@ defmodule GrpcKube.Watcher do
 
   def handle_info(%Event{object: object}, state) do
     case object do
-      %V1Event{message: "Deleted pod: " <> _} = event ->
-        drop_connection(event)
-
       %V1Event{message: "Started container"} = event ->
-        create_connection(event)
+        sync_connection(event)
+
+      %V1Event{message: "Killing container" <> _} = event ->
+        sync_connection(event)
 
       _ ->
         :ok
@@ -34,7 +34,7 @@ defmodule GrpcKube.Watcher do
     {:noreply, state}
   end
 
-  defp create_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace}}) do
+  defp sync_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace}}) do
     connections =
       Enum.filter(get_connections(), fn %{namespace: connection_namespace} -> connection_namespace == namespace end)
 
@@ -45,16 +45,6 @@ defmodule GrpcKube.Watcher do
       _ ->
         :ok
     end
-  end
-
-  defp drop_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace, labels: labels} = metadata}) do
-    Enum.map(get_connections(), fn %{namespace: child_namespace, label: child_label} ->
-      label = Map.get(labels || %{}, "app")
-
-      if namespace == child_namespace and label == child_label do
-        Logger.info("New connection should be deleted for pod #{metadata.name}")
-      end
-    end)
   end
 
   defp get_connections do
