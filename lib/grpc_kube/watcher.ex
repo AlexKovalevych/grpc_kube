@@ -14,11 +14,13 @@ defmodule GrpcKube.Watcher do
     GenServer.start_link(__MODULE__, [])
   end
 
+  @impl true
   def init(args) do
     Watcher.start_link(list_event_for_all_namespaces!(), send_to: self())
     {:ok, args}
   end
 
+  @impl true
   def handle_info(%Event{object: object}, state) do
     case object do
       %V1Event{message: "Started container"} = event ->
@@ -40,7 +42,7 @@ defmodule GrpcKube.Watcher do
 
     case connections do
       [%{endpoint_name: endpoint_name}] ->
-        GenServer.call(Channels, {:sync_connections, namespace, endpoint_name})
+        Process.send_after(Channels, {:sync_connections, namespace, endpoint_name}, 5_000)
 
       _ ->
         :ok

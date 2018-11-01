@@ -24,13 +24,13 @@ defmodule GrpcKube.Channels do
   end
 
   @impl true
-  def handle_call({:sync_connections, namespace, endpoint_name}, _, state) do
+  def handle_info({:sync_connections, namespace, endpoint_name}, state) do
     sync_namespaced_connections(namespace, endpoint_name)
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
   @impl true
-  def handle_info({:gun_down, _, :http2, :closed, [], []}, state) do
+  def handle_info(_, state) do
     Enum.map(get_connections(), fn %{namespace: namespace, endpoint_name: endpoint_name} ->
       sync_namespaced_connections(namespace, endpoint_name)
     end)
@@ -50,7 +50,7 @@ defmodule GrpcKube.Channels do
   end
 
   def create_connections(namespace, %EndpointSubset{addresses: addresses}) do
-    [{_, channels}] = :ets.lookup(:channels, namespace)
+    channels = get_channels(namespace)
     existing_channels = Enum.map(channels, &(Map.get(&1, :host) <> ":50051"))
     kube_channels = Enum.map(addresses, fn %EndpointAddress{ip: ip} -> create_host(ip, namespace) end)
 
@@ -60,6 +60,8 @@ defmodule GrpcKube.Channels do
           Logger.info("Creating connection for namespace: #{namespace} and host: #{kube_channel}")
           {:ok, channel} = GRPC.Stub.connect(kube_channel)
           [channel | acc]
+        else
+          acc
         end
       end)
 
@@ -69,7 +71,7 @@ defmodule GrpcKube.Channels do
   def create_connections(_, _), do: :ok
 
   def drop_connections(namespace, %EndpointSubset{addresses: addresses}) do
-    [{_, channels}] = :ets.lookup(:channels, namespace)
+    channels = get_channels(namespace)
     kube_channels = Enum.map(addresses, fn %EndpointAddress{ip: ip} -> create_host(ip, namespace) end)
 
     Enum.each(channels, fn channel ->
@@ -90,5 +92,10 @@ defmodule GrpcKube.Channels do
 
   defp get_connections do
     Application.get_env(:grpc_kube, :connections)
+  end
+
+  defp get_channels(namespace) do
+    [{_, channels}] = :ets.lookup(:channels, namespace)
+    channels
   end
 end
