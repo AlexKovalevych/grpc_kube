@@ -11,6 +11,7 @@ defmodule GrpcKube.Application do
       # {DynamicSupervisor, strategy: :one_for_one, name: GrpcKube.DynamicSupervisor},
       {GrpcKube.Channels, []},
       {GrpcKube.Watcher, []},
+      {GrpcKube.Worker, []},
       %{
         id: GRPC.Server.Supervisor,
         start: {GRPC.Server.Supervisor, :start_link, [{GrpcKube.HelloService.Server, 50051}]}

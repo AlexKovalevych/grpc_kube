@@ -94,7 +94,7 @@ defmodule GrpcKube.Channels do
     Application.get_env(:grpc_kube, :connections)
   end
 
-  defp get_channels(namespace) do
+  def get_channels(namespace) do
     [{_, channels}] = :ets.lookup(:channels, namespace)
     channels
   end

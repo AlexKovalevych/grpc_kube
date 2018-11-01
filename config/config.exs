@@ -35,4 +35,4 @@ config :logger, level: :info
 
 config :grpc, start_server: true
 
-config :grpc_kube, connections: [%{namespace: "default", endpoint_name: "grpc-svc"}]
+config :grpc_kube, connections: [%{namespace: "default", endpoint_name: "grpc-svc", timeout: 10_000}]

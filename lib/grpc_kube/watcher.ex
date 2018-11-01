@@ -41,8 +41,8 @@ defmodule GrpcKube.Watcher do
       Enum.filter(get_connections(), fn %{namespace: connection_namespace} -> connection_namespace == namespace end)
 
     case connections do
-      [%{endpoint_name: endpoint_name}] ->
-        Process.send_after(Channels, {:sync_connections, namespace, endpoint_name}, 5_000)
+      [%{endpoint_name: endpoint_name, timeout: timeout}] ->
+        Process.send_after(Channels, {:sync_connections, namespace, endpoint_name}, timeout)
 
       _ ->
         :ok
