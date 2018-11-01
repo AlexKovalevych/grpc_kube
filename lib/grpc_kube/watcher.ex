@@ -10,8 +10,6 @@ defmodule GrpcKube.Watcher do
   import Kazan.Apis.Core.V1, only: [list_event_for_all_namespaces!: 0]
   require Logger
 
-  @connections Application.get_env(:grpc_kube, :connections)
-
   def start_link(_) do
     GenServer.start_link(__MODULE__, [])
   end
@@ -36,20 +34,38 @@ defmodule GrpcKube.Watcher do
     {:noreply, state}
   end
 
-  defp create_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace}}) do
-    [%{label: label}] =
-      Enum.filter(@connections, fn %{namespace: connection_namespace} -> connection_namespace == namespace end)
+  def handle_info({:gun_down, _, :http2, :closed, [], []}, state) do
+    Enum.map(get_connections(), fn %{namespace: namespace, label: label} ->
+      Channels.sync_namespaced_connections(namespace, label)
+    end)
 
-    Channels.sync_namespaced_connections(namespace, label)
+    {:noreply, state}
+  end
+
+  defp create_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace}}) do
+    connections =
+      Enum.filter(get_connections(), fn %{namespace: connection_namespace} -> connection_namespace == namespace end)
+
+    case connections do
+      [%{label: label}] ->
+        Channels.sync_namespaced_connections(namespace, label)
+
+      _ ->
+        :ok
+    end
   end
 
   defp drop_connection(%V1Event{metadata: %ObjectMeta{namespace: namespace, labels: labels} = metadata}) do
-    Enum.map(@connections, fn %{namespace: child_namespace, label: child_label} ->
+    Enum.map(get_connections(), fn %{namespace: child_namespace, label: child_label} ->
       label = Map.get(labels || %{}, "app")
 
       if namespace == child_namespace and label == child_label do
         Logger.info("New connection should be deleted for pod #{metadata.name}")
       end
     end)
+  end
+
+  defp get_connections do
+    Application.get_env(:grpc_kube, :connections)
   end
 end
