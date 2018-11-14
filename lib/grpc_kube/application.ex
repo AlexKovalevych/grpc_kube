@@ -8,13 +8,13 @@ defmodule GrpcKube.Application do
   def start(_type, _args) do
     # List all child processes to be supervised
     children = [
-      {GrpcKube.Channels, []},
-      {GrpcKube.Watcher, []},
-      {GrpcKube.Worker, []},
-      %{
-        id: GRPC.Server.Supervisor,
-        start: {GRPC.Server.Supervisor, :start_link, [{GrpcKube.HelloService.Server, 50051}]}
-      }
+      # {GrpcKube.Channels, []},
+      # {GrpcKube.Watcher, []},
+      # {GrpcKube.Worker, []},
+      # %{
+      #   id: GRPC.Server.Supervisor,
+      #   start: {GRPC.Server.Supervisor, :start_link, [{GrpcKube.HelloService.Server, 50051}]}
+      # }
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -33,14 +33,19 @@ config :kazan, :server, :in_cluster
 
 config :logger, level: :info
 
-config :grpc, start_server: true
+# config :grpc, start_server: true
 
-config :grpc_kube, connections: [%{namespace: "default", endpoint_name: "grpc-svc", timeout: 10_000}]
+# config :grpc_kube, connections: [%{namespace: "default", endpoint_name: "grpc-svc", timeout: 10_000}]
 
 config :libcluster,
   topologies: [
     k8s_example: [
       strategy: Elixir.Cluster.Strategy.Kubernetes,
-      config: [mode: :dns, kubernetes_node_basename: "il", kubernetes_selector: "app=api", polling_interval: 10_000]
+      config: [
+        mode: :dns,
+        kubernetes_node_basename: "grpc_kube",
+        kubernetes_selector: "app=api",
+        polling_interval: 10_000
+      ]
     ]
   ]
